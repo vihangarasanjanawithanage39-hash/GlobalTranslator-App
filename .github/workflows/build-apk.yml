@@ -7,6 +7,9 @@ on:
       - "*.zip"
       - ".github/workflows/build-apk.yml"
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -47,7 +50,10 @@ jobs:
 
           npx cap add android
 
-          # Apply Globe Icon to Android APK launcher icons
+          # Support all Android phones down to Android 5.0 (API 21) to prevent Parsing Error
+          sed -i 's/minSdkVersion = [0-9]*/minSdkVersion = 21/' android/variables.gradle
+
+          # Apply Globe Icon cleanly
           for d in android/app/src/main/res/mipmap-*; do
             [ -f "$d/ic_launcher.png" ] && cp www/icon-512.png "$d/ic_launcher.png"
             [ -f "$d/ic_launcher_round.png" ] && cp www/icon-512.png "$d/ic_launcher_round.png"
@@ -60,15 +66,23 @@ jobs:
           # Add Camera & Microphone permissions
           sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <application|' android/app/src/main/AndroidManifest.xml
 
-      - name: Build Android APK
+      - name: Build, Zipalign & Sign Universal Release APK (v1+v2+v3)
         run: |
+          keytool -genkeypair -v -keystore release.keystore -alias globaltrans -keyalg RSA -keysize 2048 -validity 10000 -storepass vihanga123 -keypass vihanga123 -dname "CN=W.Vihanga Rasanjana Withanage, O=GlobalTranslator, C=LK"
+
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk ../Global-Translator.apk
+          ./gradlew assembleRelease
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          "$BUILD_TOOLS/zipalign" -v -p 4 app/build/outputs/apk/release/app-release-unsigned.apk ../aligned.apk
+          "$BUILD_TOOLS/apksigner" sign --ks ../release.keystore --ks-key-alias globaltrans --ks-pass pass:vihanga123 --key-pass pass:vihanga123 --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --out ../Global-Translator.apk ../aligned.apk
+          "$BUILD_TOOLS/apksigner" verify --verbose ../Global-Translator.apk
+
+      - name: Publish Direct APK to GitHub Releases
+        uses: softprops/action-gh-release@v2
         with:
-          name: Global-Translator-APK
-          path: Global-Translator.apk
+          tag_name: latest
+          name: Global Translator Pro (Latest APK)
+          body: "Global Translator Pro — Created by W.Vihanga Rasanjana Withanage"
+          files: Global-Translator.apk
