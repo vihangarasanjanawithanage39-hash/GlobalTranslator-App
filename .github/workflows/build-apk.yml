@@ -50,10 +50,7 @@ jobs:
 
           npx cap add android
 
-          # Support all Android phones down to Android 5.0 (API 21) to prevent Parsing Error
-          sed -i 's/minSdkVersion = [0-9]*/minSdkVersion = 21/' android/variables.gradle
-
-          # Apply Globe Icon cleanly
+          # Apply Globe Icon
           for d in android/app/src/main/res/mipmap-*; do
             [ -f "$d/ic_launcher.png" ] && cp www/icon-512.png "$d/ic_launcher.png"
             [ -f "$d/ic_launcher_round.png" ] && cp www/icon-512.png "$d/ic_launcher_round.png"
@@ -66,7 +63,7 @@ jobs:
           # Add Camera & Microphone permissions
           sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <application|' android/app/src/main/AndroidManifest.xml
 
-      - name: Build, Zipalign & Sign Universal Release APK (v1+v2+v3)
+      - name: Build, Zipalign & Sign Release APK (v1+v2+v3)
         run: |
           keytool -genkeypair -v -keystore release.keystore -alias globaltrans -keyalg RSA -keysize 2048 -validity 10000 -storepass vihanga123 -keypass vihanga123 -dname "CN=W.Vihanga Rasanjana Withanage, O=GlobalTranslator, C=LK"
 
