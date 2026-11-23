@@ -1,0 +1,30 @@
+name: Auto-Unzip & Deploy
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip App
+        run: |
+          mkdir -p _tmp _site
+          ZIP_FILE=$(ls -t *.zip | head -n 1)
+          unzip -o "$ZIP_FILE" -d _tmp
+          INDEX_DIR=$(dirname "$(find _tmp -name index.html | head -n 1)")
+          cp -r "$INDEX_DIR"/. _site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+      - id: deployment
+        uses: actions/deploy-pages@v4
